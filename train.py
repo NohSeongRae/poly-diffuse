@@ -34,6 +34,7 @@ warnings.filterwarnings('ignore', 'Grad strides do not match bucket view strides
 @click.option('--dropout',       help='Dropout probability', metavar='FLOAT',                       type=click.FloatRange(min=0, max=1), default=0.13, show_default=True)
 @click.option('--augment',       help='Augment probability', metavar='FLOAT',                       type=click.FloatRange(min=0, max=1), default=0.12, show_default=True)
 @click.option('--xflip',         help='Enable dataset x-flips', metavar='BOOL',                     type=bool, default=False, show_default=True)
+@click.option('--poly_mask_prob', help='Probability of masking polygons during training', metavar='FLOAT', type=click.FloatRange(min=0, max=1), default=0.0, show_default=True)
 @click.option('--sig_data',      help='sigma of the data, used in precond and loss', metavar='FLOAT', type=click.FloatRange(min=0, min_open=True), default=1.0, show_default=True)
 @click.option('--p_mean',      help='mena of log sigma for training', metavar='FLOAT', type=float, default=-0.7, show_default=True)
 @click.option('--p_std',      help='std of log sigma for training', metavar='FLOAT', type=float, default=2.1, show_default=True)
@@ -66,8 +67,9 @@ def main(**kwargs):
 
     # Initialize config dict.
     c = dnnlib.EasyDict()
-    c.dataset_kwargs = dnnlib.EasyDict(class_name='src.datasets.polygon_datasets.S3DPolygonDataset', 
-                    data_dir=opts.data_dir, init_dir=opts.init_dir, split='train', rand_aug=True)
+    c.dataset_kwargs = dnnlib.EasyDict(class_name='src.datasets.urban_polygon_dataset.UrbanPolygonDataset',
+                    data_dir=opts.data_dir, init_dir=opts.init_dir, split='train', rand_aug=True,
+                    mask_prob=opts.poly_mask_prob)
     c.data_loader_kwargs = dnnlib.EasyDict(pin_memory=True, num_workers=opts.workers, prefetch_factor=2)
     c.network_kwargs = dnnlib.EasyDict()
     c.loss_kwargs = dnnlib.EasyDict()
@@ -76,7 +78,7 @@ def main(**kwargs):
     # Validate dataset options.
     try:
         dataset_obj = dnnlib.util.construct_class_by_name(**c.dataset_kwargs)
-        dataset_name = 's3d'
+        dataset_name = 'urban'
         del dataset_obj # conserve memory
     except IOError as err:
         raise click.ClickException(f'--data: {err}')

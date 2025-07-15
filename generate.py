@@ -271,7 +271,7 @@ def main(network_pkl, port, data_dir, init_dir, outdir, seeds, max_batch_size, w
     if dist.get_rank() != 0:
         torch.distributed.barrier()
 
-    dataset_kwargs = dnnlib.EasyDict(class_name='src.datasets.polygon_datasets.S3DPolygonDataset', 
+    dataset_kwargs = dnnlib.EasyDict(class_name='src.datasets.urban_polygon_dataset.UrbanPolygonDataset',
                     data_dir=data_dir, init_dir=init_dir, split='test', rand_aug=False)
 
     network_kwargs = dnnlib.EasyDict()
