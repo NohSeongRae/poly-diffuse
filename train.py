@@ -23,6 +23,8 @@ warnings.filterwarnings('ignore', 'Grad strides do not match bucket view strides
 @click.option('--data_dir',          help='Path to the dataset', metavar='ZIP|DIR',                     type=str, required=True)
 @click.option('--init_dir',      help='Path to the initial results from proposal generator', metavar='DIR', type=str, required=True)
 @click.option('--precond',       help='Preconditioning & loss function', metavar='vp|ve|edm',       type=click.Choice(['vp', 've', 'edm']), default='edm', show_default=True)
+@click.option('--dataset_class', help='Full python path of dataset class', type=str, default='src.datasets.urban_polygon_dataset.UrbanPolygonDataset')
+@click.option('--text_key', help='Optional text key for BlockPolygonDataset', type=str, default=None)
 @click.option('--exp_name_suffix', help='Experiment name suffix, will be put at the end of the log file', type=str, required=True)
 @click.option('--train_mode',      help='guidance training or denoising training', metavar='guide|denoise', type=click.Choice(['guide', 'denoise']), default='denoise', show_default=True)
 
@@ -67,9 +69,15 @@ def main(**kwargs):
 
     # Initialize config dict.
     c = dnnlib.EasyDict()
-    c.dataset_kwargs = dnnlib.EasyDict(class_name='src.datasets.urban_polygon_dataset.UrbanPolygonDataset',
-                    data_dir=opts.data_dir, init_dir=opts.init_dir, split='train', rand_aug=True,
-                    mask_prob=opts.poly_mask_prob)
+    if 'BlockPolygonDataset' in opts.dataset_class:
+        c.dataset_kwargs = dnnlib.EasyDict(class_name=opts.dataset_class,
+                        npy_path=opts.data_dir, split_indices=None,
+                        mask_prob=opts.poly_mask_prob, text_key=opts.text_key)
+    else:
+        c.dataset_kwargs = dnnlib.EasyDict(class_name=opts.dataset_class,
+                        data_dir=opts.data_dir, init_dir=opts.init_dir,
+                        split='train', rand_aug=True,
+                        mask_prob=opts.poly_mask_prob)
     c.data_loader_kwargs = dnnlib.EasyDict(pin_memory=True, num_workers=opts.workers, prefetch_factor=2)
     c.network_kwargs = dnnlib.EasyDict()
     c.loss_kwargs = dnnlib.EasyDict()
@@ -156,7 +164,8 @@ def main(**kwargs):
     dist.print0(json.dumps(c, indent=2))
     dist.print0()
     dist.print0(f'Output directory:        {c.run_dir}')
-    dist.print0(f'Dataset path:            {c.dataset_kwargs.data_dir}')
+    dataset_path = c.dataset_kwargs.get('data_dir', c.dataset_kwargs.get('npy_path', ''))
+    dist.print0(f'Dataset path:            {dataset_path}')
     dist.print0(f'Preconditioning & loss:  {opts.precond}')
     dist.print0(f'Number of GPUs:          {dist.get_world_size()}')
     dist.print0(f'Batch size:              {c.batch_size}')

@@ -247,9 +247,11 @@ def parse_int_list(s):
 @click.option('--guide_ckpt',              help='Load the proposaal model', type=str)
 @click.option('--proposal_type',           help='The type of the proposal generator', metavar='roomformer|rough_annot',   type=click.Choice(['roomformer', 'rough_annot']))
 @click.option('--viz_results',             help='Visualize all steps with a gif', metavar='BOOL', type=bool, default=True, show_default=True)
+@click.option('--dataset_class', help='Full python path of dataset class', type=str, default='src.datasets.urban_polygon_dataset.UrbanPolygonDataset')
+@click.option('--text_key', help='Optional text key for BlockPolygonDataset', type=str, default=None)
 
 
-def main(network_pkl, port, data_dir, init_dir, outdir, seeds, max_batch_size, workers, guide_ckpt, compute_likelihood, proposal_type, viz_results, device=torch.device('cuda'), **sampler_kwargs):
+def main(network_pkl, port, data_dir, init_dir, outdir, seeds, max_batch_size, workers, guide_ckpt, compute_likelihood, proposal_type, viz_results, dataset_class, text_key, device=torch.device('cuda'), **sampler_kwargs):
     """Generate random images using the techniques described in the paper
     "Elucidating the Design Space of Diffusion-Based Generative Models".
     """
@@ -271,8 +273,12 @@ def main(network_pkl, port, data_dir, init_dir, outdir, seeds, max_batch_size, w
     if dist.get_rank() != 0:
         torch.distributed.barrier()
 
-    dataset_kwargs = dnnlib.EasyDict(class_name='src.datasets.urban_polygon_dataset.UrbanPolygonDataset',
-                    data_dir=data_dir, init_dir=init_dir, split='test', rand_aug=False)
+    if 'BlockPolygonDataset' in dataset_class:
+        dataset_kwargs = dnnlib.EasyDict(class_name=dataset_class,
+                        npy_path=data_dir, split_indices=None, text_key=text_key)
+    else:
+        dataset_kwargs = dnnlib.EasyDict(class_name=dataset_class,
+                        data_dir=data_dir, init_dir=init_dir, split='test', rand_aug=False)
 
     network_kwargs = dnnlib.EasyDict()
     network_kwargs.update(model_type='PolyModel',)
